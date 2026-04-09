@@ -52,7 +52,7 @@ pipeline {
       }
     }
 
-    // 🔥 FIXED: Build for AMD64 (IMPORTANT)
+    // 🔥 FIXED: AMD64 + push in same step
     stage('Build & Push Docker Images') {
       steps {
         withCredentials([usernamePassword(
@@ -81,26 +81,25 @@ pipeline {
       }
     }
 
+    // 🔥 FIXED: NO EOF ISSUE
     stage('Deploy To EC2') {
       steps {
         sshagent(credentials: ['ec2-ssh-key']) {
-          sh '''
-          ssh -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST << 'EOF'
+          sh """
+          ssh -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST '
+            docker pull $LATEST_BACKEND &&
+            docker pull $LATEST_FRONTEND &&
 
-          docker pull sanskarspamz1/url-shortener-backend:latest
-          docker pull sanskarspamz1/url-shortener-frontend:latest
+            docker stop backend || true &&
+            docker rm backend || true &&
 
-          docker stop backend || true
-          docker rm backend || true
+            docker stop frontend || true &&
+            docker rm frontend || true &&
 
-          docker stop frontend || true
-          docker rm frontend || true
-
-          docker run -d --name backend -p 5000:5000 sanskarspamz1/url-shortener-backend:latest
-          docker run -d --name frontend -p 80:80 sanskarspamz1/url-shortener-frontend:latest
-
-          EOF
-          '''
+            docker run -d --name backend -p 5000:5000 $LATEST_BACKEND &&
+            docker run -d --name frontend -p 80:80 $LATEST_FRONTEND
+          '
+          """
         }
       }
     }
@@ -111,7 +110,7 @@ pipeline {
       script {
         if (env.SLACK_WEBHOOK_URL?.trim()) {
           sh '''
-          curl -X POST -H 'Content-type: application/json' \
+          curl -X POST -H "Content-type: application/json" \
           --data '{"text":"✅ SUCCESS: URL Shortener pipeline completed."}' \
           $SLACK_WEBHOOK_URL
           '''
@@ -123,7 +122,7 @@ pipeline {
       script {
         if (env.SLACK_WEBHOOK_URL?.trim()) {
           sh '''
-          curl -X POST -H 'Content-type: application/json' \
+          curl -X POST -H "Content-type: application/json" \
           --data '{"text":"❌ FAILED: URL Shortener pipeline failed."}' \
           $SLACK_WEBHOOK_URL
           '''
