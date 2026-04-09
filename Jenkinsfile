@@ -1,13 +1,15 @@
 pipeline {
   agent any
 
+  options {
+    disableConcurrentBuilds()
+  }
+
   environment {
-    // 🔑 REQUIRED VARIABLES
     DOCKERHUB_USERNAME = "sanskarspamz1"
     EC2_USER = "ubuntu"
     EC2_HOST = "54.82.11.114"
 
-    // 🐳 IMAGE TAGS
     BACKEND_IMAGE = "${DOCKERHUB_USERNAME}/url-shortener-backend:${BUILD_NUMBER}"
     FRONTEND_IMAGE = "${DOCKERHUB_USERNAME}/url-shortener-frontend:${BUILD_NUMBER}"
     LATEST_BACKEND = "${DOCKERHUB_USERNAME}/url-shortener-backend:latest"
@@ -23,42 +25,35 @@ pipeline {
     }
 
     stage('Install Backend Dependencies') {
-  agent {
-    docker {
-      image 'node:18'
-    }
-  }
-  steps {
-    dir('backend') {
-      sh 'npm install'
-    }
-  }
-}
-
-    stage('Run Backend Tests') {
-  agent {
-    docker {
-      image 'node:18'
-      reuseNode true
-    }
-  }
-  steps {
-    dir('backend') {
-      sh 'npm test || echo "No tests"'
-    }
-  }
-}
-
-    stage('Build Docker Images') {
+      agent {
+        docker {
+          image 'node:18'
+          reuseNode true
+        }
+      }
       steps {
-        sh '''
-        docker build -t $BACKEND_IMAGE -t $LATEST_BACKEND ./backend
-        docker build -t $FRONTEND_IMAGE -t $LATEST_FRONTEND ./frontend
-        '''
+        dir('backend') {
+          sh 'npm install'
+        }
       }
     }
 
-    stage('Push Docker Images') {
+    stage('Run Backend Tests') {
+      agent {
+        docker {
+          image 'node:18'
+          reuseNode true
+        }
+      }
+      steps {
+        dir('backend') {
+          sh 'npm test || echo "No tests"'
+        }
+      }
+    }
+
+    // 🔥 FIXED: Build for AMD64 (IMPORTANT)
+    stage('Build & Push Docker Images') {
       steps {
         withCredentials([usernamePassword(
           credentialsId: 'dockerhub-creds',
@@ -68,10 +63,19 @@ pipeline {
           sh '''
           echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
 
-          docker push $BACKEND_IMAGE
-          docker push $FRONTEND_IMAGE
-          docker push $LATEST_BACKEND
-          docker push $LATEST_FRONTEND
+          docker buildx create --use || true
+
+          docker buildx build \
+            --platform linux/amd64 \
+            -t $BACKEND_IMAGE \
+            -t $LATEST_BACKEND \
+            --push ./backend
+
+          docker buildx build \
+            --platform linux/amd64 \
+            -t $FRONTEND_IMAGE \
+            -t $LATEST_FRONTEND \
+            --push ./frontend
           '''
         }
       }
@@ -81,10 +85,10 @@ pipeline {
       steps {
         sshagent(credentials: ['ec2-ssh-key']) {
           sh '''
-          ssh -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST << EOF
+          ssh -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST << 'EOF'
 
-          docker pull $BACKEND_IMAGE
-          docker pull $FRONTEND_IMAGE
+          docker pull sanskarspamz1/url-shortener-backend:latest
+          docker pull sanskarspamz1/url-shortener-frontend:latest
 
           docker stop backend || true
           docker rm backend || true
@@ -92,8 +96,8 @@ pipeline {
           docker stop frontend || true
           docker rm frontend || true
 
-          docker run -d --name backend -p 5000:5000 $BACKEND_IMAGE
-          docker run -d --name frontend -p 80:80 $FRONTEND_IMAGE
+          docker run -d --name backend -p 5000:5000 sanskarspamz1/url-shortener-backend:latest
+          docker run -d --name frontend -p 80:80 sanskarspamz1/url-shortener-frontend:latest
 
           EOF
           '''
@@ -108,7 +112,7 @@ pipeline {
         if (env.SLACK_WEBHOOK_URL?.trim()) {
           sh '''
           curl -X POST -H 'Content-type: application/json' \
-          --data '{"text":"✅ SUCCESS: URL Shortener pipeline #${BUILD_NUMBER} completed."}' \
+          --data '{"text":"✅ SUCCESS: URL Shortener pipeline completed."}' \
           $SLACK_WEBHOOK_URL
           '''
         }
@@ -120,7 +124,7 @@ pipeline {
         if (env.SLACK_WEBHOOK_URL?.trim()) {
           sh '''
           curl -X POST -H 'Content-type: application/json' \
-          --data '{"text":"❌ FAILED: URL Shortener pipeline #${BUILD_NUMBER} failed."}' \
+          --data '{"text":"❌ FAILED: URL Shortener pipeline failed."}' \
           $SLACK_WEBHOOK_URL
           '''
         }
