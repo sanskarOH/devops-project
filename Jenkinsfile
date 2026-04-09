@@ -3,9 +3,9 @@ pipeline {
 
   environment {
     // 🔑 REQUIRED VARIABLES
-    DOCKERHUB_USERNAME = "your_dockerhub_username"
+    DOCKERHUB_USERNAME = "sanskarspamz1"
     EC2_USER = "ubuntu"
-    EC2_HOST = "your-ec2-public-ip"
+    EC2_HOST = "54.82.11.114"
 
     // 🐳 IMAGE TAGS
     BACKEND_IMAGE = "${DOCKERHUB_USERNAME}/url-shortener-backend:${BUILD_NUMBER}"
@@ -23,20 +23,30 @@ pipeline {
     }
 
     stage('Install Backend Dependencies') {
-      steps {
-        dir('backend') {
-          sh 'npm ci'
-        }
-      }
+  agent {
+    docker {
+      image 'node:18'
     }
+  }
+  steps {
+    dir('backend') {
+      sh 'npm ci'
+    }
+  }
+}
 
     stage('Run Backend Tests') {
-      steps {
-        dir('backend') {
-          sh 'npm test || echo "No tests found, continuing..."'
-        }
-      }
+  agent {
+    docker {
+      image 'node:18'
     }
+  }
+  steps {
+    dir('backend') {
+      sh 'npm test || echo "No tests"'
+    }
+  }
+}
 
     stage('Build Docker Images') {
       steps {
