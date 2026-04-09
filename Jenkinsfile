@@ -53,6 +53,7 @@ pipeline {
     }
 
     // 🔥 FIXED: AMD64 + push in same step
+    //bruh
     stage('Build & Push Docker Images') {
       steps {
         withCredentials([usernamePassword(
