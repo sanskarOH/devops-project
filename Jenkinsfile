@@ -39,6 +39,7 @@ pipeline {
   agent {
     docker {
       image 'node:18'
+      reusenode true
     }
   }
   steps {
