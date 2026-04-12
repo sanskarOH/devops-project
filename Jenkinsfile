@@ -1,7 +1,7 @@
 def notifySlack(String message) {
   withCredentials([string(credentialsId: 'slack-webhook', variable: 'SLACK_WEBHOOK_URL')]) {
     sh """
-    curl -X POST -H 'Content-type: application/json' \
+    curl -s -X POST -H 'Content-type: application/json' \
     --data '{"text":"${message}"}' \
     $SLACK_WEBHOOK_URL
     """
@@ -28,10 +28,29 @@ pipeline {
 
   stages {
 
+    stage('Prepare Metadata') {
+      steps {
+        script {
+          env.COMMIT_MSG = sh(script: "git log -1 --pretty=%B", returnStdout: true).trim()
+          env.COMMIT_AUTHOR = sh(script: "git log -1 --pretty=%an", returnStdout: true).trim()
+          env.COMMIT_ID = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
+          env.APP_URL = "http://${EC2_HOST}"
+        }
+      }
+    }
+
     stage('Notify Pipeline Start') {
       steps {
         script {
-          notifySlack("🚀 PIPELINE STARTED: ${env.JOB_NAME} | Build #${env.BUILD_NUMBER} | Branch: ${env.GIT_BRANCH}")
+          notifySlack("""🚀 *PIPELINE STARTED*
+Job: ${env.JOB_NAME}
+Build: #${env.BUILD_NUMBER}
+Branch: ${env.GIT_BRANCH}
+
+👤 Author: ${env.COMMIT_AUTHOR}
+📝 Commit: ${env.COMMIT_MSG}
+🔖 Commit ID: ${env.COMMIT_ID}
+""")
         }
       }
     }
@@ -126,7 +145,10 @@ pipeline {
           '
           """
         }
-        script { notifySlack("✅ Deployment completed on ${EC2_HOST}") }
+        script {
+          notifySlack("🌐 *App Live*: ${env.APP_URL}")
+          notifySlack("✅ Deployment completed on ${EC2_HOST}")
+        }
       }
     }
   }
@@ -134,19 +156,31 @@ pipeline {
   post {
     success {
       script {
-        notifySlack("🎉 SUCCESS: ${env.JOB_NAME} | Build #${env.BUILD_NUMBER} | Branch: ${env.GIT_BRANCH}")
+        notifySlack("""🎉 *SUCCESS*
+Job: ${env.JOB_NAME}
+Build: #${env.BUILD_NUMBER}
+Branch: ${env.GIT_BRANCH}
+
+🌐 App: ${env.APP_URL}
+""")
       }
     }
 
     failure {
       script {
-        notifySlack("❌ FAILURE: ${env.JOB_NAME} | Build #${env.BUILD_NUMBER} | Branch: ${env.GIT_BRANCH}")
+        notifySlack("""❌ *FAILURE*
+Job: ${env.JOB_NAME}
+Build: #${env.BUILD_NUMBER}
+Branch: ${env.GIT_BRANCH}
+
+🔍 Check Jenkins logs immediately
+""")
       }
     }
 
     always {
       script {
-        notifySlack("📢 PIPELINE FINISHED: ${env.JOB_NAME} | Build #${env.BUILD_NUMBER}")
+        notifySlack("📢 Pipeline finished for Build #${env.BUILD_NUMBER}")
       }
     }
   }
