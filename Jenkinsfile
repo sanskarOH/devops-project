@@ -8,7 +8,7 @@ pipeline {
   environment {
     DOCKERHUB_USERNAME = "sanskarspamz1"
     EC2_USER = "ubuntu"
-    EC2_HOST = "3.88.185.134"
+    EC2_HOST = "34.192.222.101"
 
     BACKEND_IMAGE = "${DOCKERHUB_USERNAME}/url-shortener-backend:${BUILD_NUMBER}"
     FRONTEND_IMAGE = "${DOCKERHUB_USERNAME}/url-shortener-frontend:${BUILD_NUMBER}"
