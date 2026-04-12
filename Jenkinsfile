@@ -1,3 +1,13 @@
+def notifySlack(String message) {
+  withCredentials([string(credentialsId: 'slack-webhook', variable: 'SLACK_WEBHOOK_URL')]) {
+    sh """
+    curl -X POST -H 'Content-type: application/json' \
+    --data '{"text":"${message}"}' \
+    $SLACK_WEBHOOK_URL
+    """
+  }
+}
+
 pipeline {
   agent any
 
@@ -18,9 +28,19 @@ pipeline {
 
   stages {
 
+    stage('Notify Pipeline Start') {
+      steps {
+        script {
+          notifySlack("🚀 PIPELINE STARTED: ${env.JOB_NAME} | Build #${env.BUILD_NUMBER} | Branch: ${env.GIT_BRANCH}")
+        }
+      }
+    }
+
     stage('Checkout') {
       steps {
+        script { notifySlack("📥 Checkout started") }
         checkout scm
+        script { notifySlack("✅ Checkout completed") }
       }
     }
 
@@ -32,9 +52,11 @@ pipeline {
         }
       }
       steps {
+        script { notifySlack("📦 Installing backend dependencies") }
         dir('backend') {
           sh 'npm install'
         }
+        script { notifySlack("✅ Backend dependencies installed") }
       }
     }
 
@@ -46,16 +68,17 @@ pipeline {
         }
       }
       steps {
+        script { notifySlack("🧪 Running backend tests") }
         dir('backend') {
           sh 'npm test || echo "No tests"'
         }
+        script { notifySlack("✅ Backend tests finished") }
       }
     }
 
-    // 🔥 FIXED: AMD64 + push in same step
-    //bruh//bruh
     stage('Build & Push Docker Images') {
       steps {
+        script { notifySlack("🐳 Building & pushing Docker images") }
         withCredentials([usernamePassword(
           credentialsId: 'dockerhub-creds',
           usernameVariable: 'DOCKER_USER',
@@ -79,12 +102,13 @@ pipeline {
             --push ./frontend
           '''
         }
+        script { notifySlack("✅ Docker images built & pushed") }
       }
     }
 
-    // 🔥 FIXED: NO EOF ISSUE
     stage('Deploy To EC2') {
       steps {
+        script { notifySlack("🚀 Deployment started on ${EC2_HOST}") }
         sshagent(credentials: ['ec2-ssh-key']) {
           sh """
           ssh -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST '
@@ -102,6 +126,7 @@ pipeline {
           '
           """
         }
+        script { notifySlack("✅ Deployment completed on ${EC2_HOST}") }
       }
     }
   }
@@ -109,25 +134,19 @@ pipeline {
   post {
     success {
       script {
-        if (env.SLACK_WEBHOOK_URL?.trim()) {
-          sh '''
-          curl -X POST -H "Content-type: application/json" \
-          --data '{"text":"✅ SUCCESS: URL Shortener pipeline completed."}' \
-          $SLACK_WEBHOOK_URL
-          '''
-        }
+        notifySlack("🎉 SUCCESS: ${env.JOB_NAME} | Build #${env.BUILD_NUMBER} | Branch: ${env.GIT_BRANCH}")
       }
     }
 
     failure {
       script {
-        if (env.SLACK_WEBHOOK_URL?.trim()) {
-          sh '''
-          curl -X POST -H "Content-type: application/json" \
-          --data '{"text":"❌ FAILED: URL Shortener pipeline failed."}' \
-          $SLACK_WEBHOOK_URL
-          '''
-        }
+        notifySlack("❌ FAILURE: ${env.JOB_NAME} | Build #${env.BUILD_NUMBER} | Branch: ${env.GIT_BRANCH}")
+      }
+    }
+
+    always {
+      script {
+        notifySlack("📢 PIPELINE FINISHED: ${env.JOB_NAME} | Build #${env.BUILD_NUMBER}")
       }
     }
   }
