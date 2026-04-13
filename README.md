@@ -439,3 +439,4 @@ curl http://<EC2_PUBLIC_IP>:5000/stats/<CODE>
 
 - Add Terraform to auto create instances
 - Deployment on a domain
+- Add more information on slack
