@@ -3,6 +3,7 @@
 This project gives you a **minimal URL shortener app** and a **high-quality DevOps pipeline**.
 
 Tech stack:
+
 - Frontend: React + Vite + TypeScript
 - Backend: Node.js + Express + TypeScript
 - DB: MongoDB Atlas (free tier)
@@ -14,12 +15,14 @@ Tech stack:
 ## 0) What You Will Build
 
 Features:
+
 - `POST /shorten`: generate a short URL
 - `GET /:code`: redirect to original URL
 - `GET /stats/:code`: clicks analytics
 - Optional expiry (`expiresAt`) support
 
 DevOps quality:
+
 - Multi-stage Dockerfiles (frontend + backend)
 - Local `docker-compose` setup
 - Jenkins pipeline with test, build, push, deploy
@@ -37,7 +40,7 @@ DevOps quality:
 +-- backend/
 +-- frontend/
 +-- infra/
-¦   +-- scripts/
+ï¿½   +-- scripts/
 +-- Jenkinsfile
 +-- docker-compose.yml
 +-- README.md
@@ -87,10 +90,12 @@ npm run dev
 ```
 
 What you should see:
+
 - Backend terminal: `Server is running on port 5000`
 - Frontend terminal: Vite URL like `http://localhost:5173`
 
 Screenshot description:
+
 - Terminal with backend log + browser open at frontend page with URL input.
 
 ### 2.2 Quick API test
@@ -115,6 +120,7 @@ Expected JSON:
 ## 3) Docker Setup
 
 ### 3.1 Why Docker here?
+
 - Same runtime everywhere (local, Jenkins, EC2)
 - Reduces "works on my machine" issues
 - Easier deployment rollback with tags
@@ -132,11 +138,13 @@ docker compose ps
 ```
 
 Expected:
+
 - `urlshortener-mongo` running
 - `urlshortener-backend` running
 - `urlshortener-frontend` running
 
 Open:
+
 - Frontend: `http://localhost:5173`
 - API health: `http://localhost:5000/health`
 
@@ -147,6 +155,7 @@ docker compose down
 ```
 
 Troubleshooting:
+
 - If port in use: change ports in `docker-compose.yml`
 - If backend cannot connect DB: confirm `MONGODB_URI` and mongo container is healthy
 
@@ -155,6 +164,7 @@ Troubleshooting:
 ## 4) GitHub Setup
 
 ### 4.1 Create repository
+
 1. Create new GitHub repo (public/private).
 2. Initialize local git and push.
 
@@ -170,14 +180,17 @@ git push -u origin main
 ```
 
 ### 4.2 Branch strategy
+
 - `main`: production-ready code only
 - `dev`: integration branch for daily work
 - feature branches: `feature/<name>` merge into `dev`
 - promote `dev` -> `main` after verification
 
 ### 4.3 Secrets management
+
 Never store secrets in code.
 Use:
+
 - Jenkins Credentials for Docker Hub, EC2 key, Slack webhook
 - AWS security groups + key pair
 - MongoDB Atlas IP allow list and DB user credentials
@@ -209,10 +222,13 @@ docker exec jenkins cat /var/jenkins_home/secrets/initialAdminPassword
 Install suggested plugins, then create admin user.
 
 Screenshot description:
+
 - Jenkins unlock page showing password input.
 
 ### 5.2 Required Jenkins plugins
+
 Install these in "Manage Jenkins > Plugins":
+
 - Pipeline
 - Git
 - Docker Pipeline
@@ -220,6 +236,7 @@ Install these in "Manage Jenkins > Plugins":
 - Credentials Binding
 
 ### 5.3 Add Jenkins Credentials
+
 Manage Jenkins > Credentials > Global > Add:
 
 1. `dockerhub-creds` (Username/Password)
@@ -237,6 +254,7 @@ Manage Jenkins > Credentials > Global > Add:
 Pipeline file is `Jenkinsfile`.
 
 Stages:
+
 1. Checkout
 2. Install backend dependencies
 3. Run tests
@@ -246,6 +264,7 @@ Stages:
 7. Slack notifications (success/failure)
 
 ### 6.1 Create pipeline job
+
 1. New Item -> Pipeline
 2. Pipeline definition: "Pipeline script from SCM"
 3. SCM: Git
@@ -254,9 +273,11 @@ Stages:
 6. Save -> Build Now
 
 Screenshot description:
+
 - Jenkins job page showing green check build and stage view.
 
 Troubleshooting:
+
 - `npm ci` fails: lockfile mismatch; regenerate package-lock.json and commit
 - Docker push fails: verify `dockerhub-creds`
 - SSH deploy fails: security group or key mismatch
@@ -272,6 +293,7 @@ Troubleshooting:
 - For beginners, one EC2 VM with Docker is simplest and predictable.
 
 Estimated monthly cost (if in free tier limits):
+
 - EC2: $0 (up to free-tier hours)
 - EBS (small): near $0 within free tier
 - Data transfer: small apps usually low; monitor usage
@@ -281,6 +303,7 @@ Estimated monthly cost (if in free tier limits):
 Outside free tier: roughly $8-$12/month for smallest EC2 + storage (region dependent).
 
 ### 7.2 Launch EC2
+
 1. AWS Console -> EC2 -> Launch Instance
 2. AMI: Ubuntu 22.04
 3. Instance type: t2.micro/t3.micro
@@ -318,6 +341,7 @@ docker --version
 ```
 
 ### 7.5 MongoDB Atlas setup
+
 1. Create free M0 cluster
 2. Create DB user/password
 3. Network access: allow EC2 public IP
@@ -333,6 +357,7 @@ docker --version
 ## 8) Slack Integration
 
 ### 8.1 Create Slack incoming webhook
+
 1. Go to [Slack API Incoming Webhooks](https://api.slack.com/messaging/webhooks)
 2. Create app from scratch
 3. Enable Incoming Webhooks
@@ -340,6 +365,7 @@ docker --version
 5. Copy webhook URL
 
 ### 8.2 Add in Jenkins
+
 - Add as secret text or environment variable: `SLACK_WEBHOOK_URL`
 
 ### 8.3 Test manually
@@ -351,6 +377,7 @@ curl -X POST -H 'Content-type: application/json' --data '{"text":"Jenkins Slack 
 You should see message in Slack channel.
 
 Screenshot description:
+
 - Slack channel showing "SUCCESS: URL Shortener pipeline #X completed."
 
 ---
@@ -408,3 +435,7 @@ curl http://<EC2_PUBLIC_IP>:5000/stats/<CODE>
 - DevOps is realistic and industry-style (build, test, image, deploy, notify).
 - You can scale later without rewriting everything.
 
+## Potential Updates
+
+- Add Terraform to auto create instances
+- Deployment on a domain
