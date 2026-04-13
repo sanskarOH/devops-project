@@ -435,8 +435,8 @@ curl http://<EC2_PUBLIC_IP>:5000/stats/<CODE>
 - DevOps is realistic and industry-style (build, test, image, deploy, notify).
 - You can scale later without rewriting everything.
 
-## Potential Updates
+## Collaborators
 
-- Add Terraform to auto create instances
-- Deployment on a domain
-- Add more information on slack
+- Yuvraj
+- Arnav
+- Sanskar
