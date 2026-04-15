@@ -437,9 +437,9 @@ curl http://<EC2_PUBLIC_IP>:5000/stats/<CODE>
 
 ## Collaborators
 
-- Yuvraj
-- Arnav
-- Sanskar
+- Sanskar Diwedi
+- Khwaish Sharma
+- Aryan Raj Arya
 
 ## Professor
 
