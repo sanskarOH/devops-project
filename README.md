@@ -443,4 +443,4 @@ curl http://<EC2_PUBLIC_IP>:5000/stats/<CODE>
 
 ## Professor
 
-- Dr. Radhika Mam Professor
+- Dr. Parimala Mam.
