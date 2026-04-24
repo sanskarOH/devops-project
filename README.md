@@ -438,8 +438,8 @@ curl http://<EC2_PUBLIC_IP>:5000/stats/<CODE>
 ## Collaborators
 
 - Sanskar Diwedi
-- Khwaish Sharma
-- Aryan Raj Arya
+- Arnav vashisht Sharma
+- Yuvraj sharma
 
 ## Professor
 
