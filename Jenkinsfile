@@ -1,10 +1,10 @@
 def notifySlack(String message) {
   withCredentials([string(credentialsId: 'slack-webhook', variable: 'SLACK_WEBHOOK_URL')]) {
-    sh """
-    curl -s -X POST -H 'Content-type: application/json' \
-    --data '{"text":"${message}"}' \
+    sh '''
+    curl -s -X POST -H "Content-type: application/json" \
+    --data "{\"text\":\"''' + message + '''\"}" \
     $SLACK_WEBHOOK_URL
-    """
+    '''
   }
 }
 
@@ -13,6 +13,7 @@ pipeline {
 
   options {
     disableConcurrentBuilds()
+    skipDefaultCheckout(true)
   }
 
   environment {
@@ -27,6 +28,18 @@ pipeline {
   }
 
   stages {
+
+    stage('Clean Workspace') {
+      steps {
+        cleanWs()
+      }
+    }
+
+    stage('Checkout') {
+      steps {
+        checkout scm
+      }
+    }
 
     stage('Prepare Metadata') {
       steps {
@@ -55,14 +68,6 @@ Branch: ${env.GIT_BRANCH}
       }
     }
 
-    stage('Checkout') {
-      steps {
-        script { notifySlack("📥 Checkout started") }
-        checkout scm
-        script { notifySlack("✅ Checkout completed") }
-      }
-    }
-
     stage('Install Backend Dependencies') {
       agent {
         docker {
@@ -71,11 +76,9 @@ Branch: ${env.GIT_BRANCH}
         }
       }
       steps {
-        script { notifySlack("📦 Installing backend dependencies") }
         dir('backend') {
           sh 'npm install'
         }
-        script { notifySlack("✅ Backend dependencies installed") }
       }
     }
 
@@ -87,17 +90,16 @@ Branch: ${env.GIT_BRANCH}
         }
       }
       steps {
-        script { notifySlack("🧪 Running backend tests") }
         dir('backend') {
           sh 'npm test || echo "No tests"'
         }
-        script { notifySlack("✅ Backend tests finished") }
       }
     }
 
     stage('Build & Push Docker Images') {
       steps {
         script { notifySlack("🐳 Building & pushing Docker images") }
+
         withCredentials([usernamePassword(
           credentialsId: 'dockerhub-creds',
           usernameVariable: 'DOCKER_USER',
@@ -121,6 +123,7 @@ Branch: ${env.GIT_BRANCH}
             --push ./frontend
           '''
         }
+
         script { notifySlack("✅ Docker images built & pushed") }
       }
     }
@@ -128,27 +131,38 @@ Branch: ${env.GIT_BRANCH}
     stage('Deploy To EC2') {
       steps {
         script { notifySlack("🚀 Deployment started on ${EC2_HOST}") }
+
         sshagent(credentials: ['ec2-ssh-key']) {
           sh """
           ssh -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST '
-            docker pull $LATEST_BACKEND &&
-            docker pull $LATEST_FRONTEND &&
+            cd ~/your-project &&
 
-            docker stop backend || true &&
-            docker rm backend || true &&
+            docker-compose pull &&
+            docker-compose down &&
+            docker-compose up -d &&
 
-            docker stop frontend || true &&
-            docker rm frontend || true &&
-
-            docker run -d --name backend --env-file /home/ubuntu/.env -p 5000:5000 --restart unless-stopped $LATEST_BACKEND &&
-            docker run -d --name frontend -p 80:80 --restart unless-stopped $LATEST_FRONTEND
+            docker system prune -af
           '
           """
         }
+
         script {
           notifySlack("🌐 *App Live*: ${env.APP_URL}")
           notifySlack("✅ Deployment completed on ${EC2_HOST}")
         }
+      }
+    }
+
+    stage('Health Check') {
+      steps {
+        script { notifySlack("🩺 Running health check") }
+
+        sh """
+        sleep 10
+        curl -f http://${EC2_HOST} || exit 1
+        """
+
+        script { notifySlack("✅ Health check passed") }
       }
     }
   }
@@ -159,7 +173,6 @@ Branch: ${env.GIT_BRANCH}
         notifySlack("""🎉 *SUCCESS*
 Job: ${env.JOB_NAME}
 Build: #${env.BUILD_NUMBER}
-Branch: ${env.GIT_BRANCH}
 
 🌐 App: ${env.APP_URL}
 """)
@@ -171,7 +184,6 @@ Branch: ${env.GIT_BRANCH}
         notifySlack("""❌ *FAILURE*
 Job: ${env.JOB_NAME}
 Build: #${env.BUILD_NUMBER}
-Branch: ${env.GIT_BRANCH}
 
 🔍 Check Jenkins logs immediately
 """)
