@@ -1,10 +1,10 @@
 def notifySlack(String message) {
   withCredentials([string(credentialsId: 'slack-webhook', variable: 'SLACK_WEBHOOK_URL')]) {
-    sh '''
+    sh """
     curl -s -X POST -H "Content-type: application/json" \
-    --data "{\"text\":\"''' + message + '''\"}" \
+    --data '{\"text\":\"${message}\"}' \
     $SLACK_WEBHOOK_URL
-    '''
+    """
   }
 }
 
@@ -55,14 +55,14 @@ pipeline {
     stage('Notify Pipeline Start') {
       steps {
         script {
-          notifySlack("""🚀 *PIPELINE STARTED*
+          notifySlack("""🚀 PIPELINE STARTED
 Job: ${env.JOB_NAME}
 Build: #${env.BUILD_NUMBER}
 Branch: ${env.GIT_BRANCH}
 
-👤 Author: ${env.COMMIT_AUTHOR}
-📝 Commit: ${env.COMMIT_MSG}
-🔖 Commit ID: ${env.COMMIT_ID}
+Author: ${env.COMMIT_AUTHOR}
+Commit: ${env.COMMIT_MSG}
+Commit ID: ${env.COMMIT_ID}
 """)
         }
       }
@@ -147,8 +147,8 @@ Branch: ${env.GIT_BRANCH}
         }
 
         script {
-          notifySlack("🌐 *App Live*: ${env.APP_URL}")
-          notifySlack("✅ Deployment completed on ${EC2_HOST}")
+          notifySlack("🌐 App Live: ${env.APP_URL}")
+          notifySlack("✅ Deployment completed")
         }
       }
     }
@@ -170,22 +170,22 @@ Branch: ${env.GIT_BRANCH}
   post {
     success {
       script {
-        notifySlack("""🎉 *SUCCESS*
+        notifySlack("""🎉 SUCCESS
 Job: ${env.JOB_NAME}
 Build: #${env.BUILD_NUMBER}
 
-🌐 App: ${env.APP_URL}
+App: ${env.APP_URL}
 """)
       }
     }
 
     failure {
       script {
-        notifySlack("""❌ *FAILURE*
+        notifySlack("""❌ FAILURE
 Job: ${env.JOB_NAME}
 Build: #${env.BUILD_NUMBER}
 
-🔍 Check Jenkins logs immediately
+Check Jenkins logs
 """)
       }
     }
