@@ -15,6 +15,7 @@ app.use(morgan("combined"));
 app.get("/health", (_req, res) => {
   res.json({ status: "ok" });
 });
+client.collectDefaultMetrics();
 
 app.get("/metrics", async (req, res) => {
   res.set("Content-Type", client.register.contentType);
