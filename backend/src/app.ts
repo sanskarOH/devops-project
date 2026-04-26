@@ -12,6 +12,15 @@ app.use(cors());
 app.use(express.json());
 app.use(morgan("combined"));
 
+const httpCounter = new client.Counter({
+  name: "http_requests_total",
+  help: "Total HTTP requests",
+});
+
+app.use((req, res, next) => {
+  httpCounter.inc();
+  next();
+});
 app.get("/health", (_req, res) => {
   res.json({ status: "ok" });
 });
