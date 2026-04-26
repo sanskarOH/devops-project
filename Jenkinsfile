@@ -58,7 +58,6 @@ pipeline {
           notifySlack("""🚀 PIPELINE STARTED
 Job: ${env.JOB_NAME}
 Build: #${env.BUILD_NUMBER}
-Branch: ${env.GIT_BRANCH}
 
 Author: ${env.COMMIT_AUTHOR}
 Commit: ${env.COMMIT_MSG}
@@ -91,7 +90,7 @@ Commit ID: ${env.COMMIT_ID}
       }
       steps {
         dir('backend') {
-          sh 'npm test || echo "No tests"'
+          sh 'npm test || echo "Tests failed but continuing"'
         }
       }
     }
@@ -137,10 +136,20 @@ Commit ID: ${env.COMMIT_ID}
           ssh -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST '
             cd ~ &&
 
+            echo "🧹 Removing old docker-run containers..."
+            docker stop backend || true &&
+            docker rm backend || true &&
+            docker stop frontend || true &&
+            docker rm frontend || true &&
+
+            echo "📦 Pulling latest images..."
             docker-compose pull &&
+
+            echo "🚀 Starting services..."
             docker-compose down &&
             docker-compose up -d &&
 
+            echo "🧼 Cleaning unused images..."
             docker system prune -af
           '
           """
