@@ -135,7 +135,7 @@ Commit ID: ${env.COMMIT_ID}
         sshagent(credentials: ['ec2-ssh-key']) {
           sh """
           ssh -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST '
-            cd ~/your-project &&
+            cd ~ &&
 
             docker-compose pull &&
             docker-compose down &&
